@@ -1,23 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
-import { 
-  FolderOpen, Clock, Users, DollarSign, CheckCircle2, AlertCircle, Plus, 
-  MoreVertical, FileText, ExternalLink, Shield, Lock, FilePlus, Briefcase, 
-  ArrowLeft, Save, Send, List, Calendar, XCircle, Check, Edit, PlayCircle, 
-  Search, PenTool, FileSpreadsheet, RefreshCw, Cloud, Layout, ClipboardList, 
-  CheckSquare, MoreHorizontal, Flag, Rocket, Home, HardHat, DraftingCompass, 
-  UserCog, Phone, Mail, Key, Eye, Trash2, FileEdit, Camera, Image as ImageIcon, 
-  LogOut, Layers, ChevronRight, User, UserCheck, CalendarDays, ArrowRight, 
-  Filter, AlertTriangle, Wallet, Download, History, BarChart3, Briefcase as CaseIcon, 
-  ToggleLeft, ToggleRight, Hammer, FileText as FileTextIcon, SendHorizontal, 
-  FileCheck, Bell, Paperclip, Square, ListTodo, AlignLeft, X, File
-} from 'lucide-react';
-
-import React, { useState, useEffect } from 'react';
 import { collection, doc, setDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
-import { db } from './firebase'; // <-- Aquí conectamos con tus llaves reales
+import { db } from './firebase'; 
 import { 
   FolderOpen, Clock, Users, DollarSign, CheckCircle2, AlertCircle, Plus, 
   MoreVertical, FileText, ExternalLink, Shield, Lock, FilePlus, Briefcase, 
@@ -30,7 +13,6 @@ import {
   ToggleLeft, ToggleRight, Hammer, FileText as FileTextIcon, SendHorizontal, 
   FileCheck, Bell, Paperclip, Square, ListTodo, AlignLeft, X, File
 } from 'lucide-react';
-
 // --- CONSTANTES GLOBALES ---
 const SERVICE_OPTIONS = [
   "Diseño arquitectónico",
