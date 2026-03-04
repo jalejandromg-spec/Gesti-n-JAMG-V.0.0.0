@@ -15,36 +15,21 @@ import {
   FileCheck, Bell, Paperclip, Square, ListTodo, AlignLeft, X, File
 } from 'lucide-react';
 
-// --- CONFIGURACIÓN BASE DE DATOS EN LA NUBE ---
-let app, auth, db, appId;
-let isFirebaseConfigured = false;
-
-try {
-  // ⚠️ PASO FINAL PARA TU EJECUTABLE ⚠️
-  // Reemplaza el contenido de 'fallbackConfig' con las credenciales de tu proyecto de Firebase.
-  const fallbackConfig = {
-      // apiKey: "TU_API_KEY",
-      // authDomain: "tu-proyecto.firebaseapp.com",
-      // projectId: "tu-proyecto",
-      // storageBucket: "tu-proyecto.appspot.com",
-      // messagingSenderId: "123456789",
-      // appId: "1:123456789:web:abcdef"
-  };
-
-  const configToUse = typeof __firebase_config !== 'undefined' && __firebase_config 
-      ? JSON.parse(__firebase_config) 
-      : fallbackConfig;
-  
-  if (configToUse && configToUse.apiKey) {
-      app = initializeApp(configToUse);
-      auth = getAuth(app);
-      db = getFirestore(app);
-      isFirebaseConfigured = true;
-  }
-  appId = typeof __app_id !== 'undefined' ? __app_id : 'jamg-erp';
-} catch(e) {
-  console.warn("Error inicializando la base de datos", e);
-}
+import React, { useState, useEffect } from 'react';
+import { collection, doc, setDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { db } from './firebase'; // <-- Aquí conectamos con tus llaves reales
+import { 
+  FolderOpen, Clock, Users, DollarSign, CheckCircle2, AlertCircle, Plus, 
+  MoreVertical, FileText, ExternalLink, Shield, Lock, FilePlus, Briefcase, 
+  ArrowLeft, Save, Send, List, Calendar, XCircle, Check, Edit, PlayCircle, 
+  Search, PenTool, FileSpreadsheet, RefreshCw, Cloud, Layout, ClipboardList, 
+  CheckSquare, MoreHorizontal, Flag, Rocket, Home, HardHat, DraftingCompass, 
+  UserCog, Phone, Mail, Key, Eye, Trash2, FileEdit, Camera, Image as ImageIcon, 
+  LogOut, Layers, ChevronRight, User, UserCheck, CalendarDays, ArrowRight, 
+  Filter, AlertTriangle, Wallet, Download, History, BarChart3, Briefcase as CaseIcon, 
+  ToggleLeft, ToggleRight, Hammer, FileText as FileTextIcon, SendHorizontal, 
+  FileCheck, Bell, Paperclip, Square, ListTodo, AlignLeft, X, File
+} from 'lucide-react';
 
 // --- CONSTANTES GLOBALES ---
 const SERVICE_OPTIONS = [
@@ -1860,52 +1845,28 @@ export default function App() {
   
   const DEFAULT_ADMIN = { id: 1, name: "Admin JAMG", role: "Gerente", email: "jamg@jamg.com", password: "Concreto25#", status: "Active", permissions: { quotes: {view: true, create: true, delete: true}, projects: {view: true, edit_tasks: true, manage_team: true}, finance: {view_costs: true, register_payments: true}, admin: {manage_users: true} } };
 
-  // Estado para almacenar datos reales (Precargamos el admin para que no falle offline/en el ejecutable)
+  // Estados de datos
   const [staffList, setStaffList] = useState([DEFAULT_ADMIN]);
   const [quotes, setQuotes] = useState([]);
   const [projects, setProjects] = useState([]);
-
-  const [fbUser, setFbUser] = useState(null);
   const [isDbLoaded, setIsDbLoaded] = useState(false);
 
-  // 1. Iniciar autenticación silenciosa para Firebase
+  // 1. Cargar y sincronizar datos en TIEMPO REAL desde Firestore
   useEffect(() => {
-    if(!auth) {
-       setIsDbLoaded(true); // Fallback si no hay config de firebase
-       return;
-    }
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (e) { 
-          console.error(e); 
-          setIsDbLoaded(true); 
-      }
-    };
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, user => setFbUser(user));
-    return () => unsubscribe();
-  }, []);
-
-  // 2. Cargar y sincronizar datos desde Firestore
-  useEffect(() => {
-    if (!fbUser || !db) {
-        setIsDbLoaded(true); // Forzar carga de UI si falla la BD
+    if (!db) {
+        setIsDbLoaded(true);
         return;
     }
 
-    const staffRef = collection(db, 'artifacts', appId, 'public', 'data', 'staff');
-    const quotesRef = collection(db, 'artifacts', appId, 'public', 'data', 'quotes');
-    const projectsRef = collection(db, 'artifacts', appId, 'public', 'data', 'projects');
+    // Rutas limpias en tu base de datos
+    const staffRef = collection(db, 'staff');
+    const quotesRef = collection(db, 'quotes');
+    const projectsRef = collection(db, 'projects');
 
+    // Escuchar el equipo
     const unsubStaff = onSnapshot(staffRef, (snap) => {
       const staffData = snap.docs.map(d => d.data());
       if (staffData.length === 0) {
-          // Crear usuario por defecto si la base de datos está vacía
           setDoc(doc(staffRef, '1'), DEFAULT_ADMIN);
           setStaffList([DEFAULT_ADMIN]);
       } else {
@@ -1913,37 +1874,48 @@ export default function App() {
       }
     }, console.error);
 
+    // Escuchar cotizaciones
     const unsubQuotes = onSnapshot(quotesRef, (snap) => {
       setQuotes(snap.docs.map(d => d.data()));
     }, console.error);
 
+    // Escuchar proyectos
     const unsubProjects = onSnapshot(projectsRef, (snap) => {
       setProjects(snap.docs.map(d => d.data()));
-      setIsDbLoaded(true); // Una vez cargados los proyectos, se oculta el loading
+      setIsDbLoaded(true); // Ocultar pantalla de carga
     }, console.error);
 
     return () => { unsubStaff(); unsubQuotes(); unsubProjects(); };
-  }, [fbUser]);
+  }, []);
 
-  // Funciones puente hacia la nube
+  // 2. Funciones puente para escribir en la nube
   const saveProjectToDB = async (project) => {
-    if(!db) return; // Si no hay BD, no hacer nada
-    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'projects', String(project.id)), project);
+    try {
+      if(!db) {
+        console.warn("La tubería de la base de datos no existe (!db)");
+        return;
+      }
+      console.log("⏳ Intentando enviar datos de proyecto a Firebase...");
+      await setDoc(doc(db, 'projects', String(project.id)), project);
+      console.log("✅ ¡Éxito rotundo! Los datos llegaron a la nube.");
+    } catch (error) {
+      console.error("❌ Fallo al guardar en Firebase. El guardia dijo:", error);
+    }
   };
 
   const saveQuoteToDB = async (quote) => {
     if(!db) return;
-    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'quotes', String(quote.id)), quote);
+    await setDoc(doc(db, 'quotes', String(quote.id)), quote);
   };
 
   const deleteQuoteFromDB = async (id) => {
     if(!db) return;
-    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'quotes', String(id)));
+    await deleteDoc(doc(db, 'quotes', String(id)));
   };
   
   const saveStaffToDB = async (staff) => {
     if(!db) return;
-    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'staff', String(staff.id)), staff);
+    await setDoc(doc(db, 'staff', String(staff.id)), staff);
   };
 
   // Autenticación de UI
